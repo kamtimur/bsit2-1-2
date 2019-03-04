@@ -16,7 +16,7 @@ typedef NTSTATUS(WINAPI *NetLocalGroupGetMembersT)	(LPCWSTR, LPCWSTR, DWORD, LPB
 
 bool enum_groups_users();
 bool init_lsa_string(PLSA_UNICODE_STRING pLsaString, LPCWSTR pwszString);
-
+bool enum_acc_rights(PLSA_TRANSLATED_SID2 sid);
 LSA_HANDLE pol_handle();
 
 
@@ -130,18 +130,14 @@ bool enum_groups_users()
 	LPWSTR groupStringSid[100];
 	for (int i = 0; i < groupsEntriesread; i++)
 	{
+
+
 		rc = ConvertSidToStringSid(sid[i].Sid, &groupStringSid[i]);
 		if (!rc)
 		{
 			printf("sid into string error");
 			return false;
 		}
-	}
-	status = LsaFreeMemory(sid);
-	if (status != 0)
-	{
-		printf("LsaFreeMemory error");
-		return false;
 	}
 
 	for (int i = 0; i < groupsEntriesread; i++)
@@ -160,6 +156,23 @@ bool enum_groups_users()
 			return false;
 		}
 		wprintf(L"%s %s\n", group_names[i], groupStringSid[i]);
+
+		PLSA_UNICODE_STRING rights;
+		ULONG count;
+		NTSTATUS status = LsaEnumerateAccountRights(pol_handle(), sid[i].Sid, &rights, &count);
+		if (status != 0)
+		{
+			//printf("LsaEnumerateAccountRights error");
+			//return false;
+		}
+		for (ULONG k = 0; k < count; k++)
+		{
+			wprintf(L"____%s\n", (rights + k)->Buffer);
+			//rights+ count;
+		}
+		LsaFreeMemory(rights);
+
+
 		for (int j = 0; j < usersEntriesread; j++)
 		{
 			PSID         lgrmi2_sid = buf[j].lgrmi2_sid;
@@ -168,6 +181,9 @@ bool enum_groups_users()
 			rc = ConvertSidToStringSid(lgrmi2_sid, &userStringSid[j]);
 			wprintf(L"\t%s %s\n", lgrmi2_domainandname, userStringSid[j]);
 		}
+
+
+
 		if (buf)
 		{
 			ret = NetApiBufferFree(buf);
@@ -178,6 +194,12 @@ bool enum_groups_users()
 				return false;
 			}
 		}
+	}
+	status = LsaFreeMemory(sid);
+	if (status != 0)
+	{
+		printf("LsaFreeMemory error");
+		return false;
 	}
 	if (pGroupsBuf)
 	{
@@ -222,6 +244,31 @@ bool init_lsa_string(	PLSA_UNICODE_STRING pLsaString,	LPCWSTR pwszString)
 
 	return TRUE;
 }
+
+//bool enum_acc_rights(PLSA_TRANSLATED_SID2 sid)
+//{
+//	//PLSA_TRANSLATED_SID2  sid;
+//	//PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
+//	//NTSTATUS status = LsaLookupNames2(pol_handle(), 0x80000000, 1, pLsaString, &ReferencedDomains, &sid);
+//	//if (status != 0)
+//	//{
+//	//	printf("LsaLookupNames2 error");
+//	//	return false;
+//	//}
+//	PLSA_UNICODE_STRING rights;
+//	ULONG count;
+//	NTSTATUS status = LsaEnumerateAccountRights(pol_handle(), sid, &rights, &count);
+//	if (status != 0)
+//	{
+//		printf("LsaEnumerateAccountRights error");
+//		return false;
+//	}
+//	for (ULONG k = 0; k < count; k++)
+//	{
+//		wprintf(L"%s\n", rights->Buffer);
+//	}
+//	return true;
+//}
 
 
 LSA_HANDLE pol_handle()
