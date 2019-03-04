@@ -16,15 +16,21 @@ typedef NTSTATUS(WINAPI *NetLocalGroupGetMembersT)	(LPCWSTR, LPCWSTR, DWORD, LPB
 
 bool enum_groups_users();
 bool init_lsa_string(PLSA_UNICODE_STRING pLsaString, LPCWSTR pwszString);
-bool enum_acc_rights(PLSA_TRANSLATED_SID2 sid);
 LSA_HANDLE pol_handle();
-
+void enum_acc_right_token(LPCWSTR username, LPCWSTR password);
 
 
 int main()
 {
 	setlocale(LC_ALL, "Russian");
-	enum_groups_users();
+	//enum_groups_users();
+
+	//LPCWSTR user = L"tkn";
+	//LPCWSTR pass = L"Xq1mn123";
+	//enum_acc_right_token(user, pass);
+
+
+
 	return 0;
 }
 
@@ -109,12 +115,6 @@ bool enum_groups_users()
 			return false;
 		}
 	}
-	//ret = NetApiBufferFree(pGroupsBuf);
-	//if (ret != NERR_Success)
-	//{
-	//	printf("NetApiBufferFree error %d", ret);
-	//	return false;
-	//}
 
 	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
 	PLSA_TRANSLATED_SID2  sid;
@@ -245,32 +245,6 @@ bool init_lsa_string(	PLSA_UNICODE_STRING pLsaString,	LPCWSTR pwszString)
 	return TRUE;
 }
 
-//bool enum_acc_rights(PLSA_TRANSLATED_SID2 sid)
-//{
-//	//PLSA_TRANSLATED_SID2  sid;
-//	//PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
-//	//NTSTATUS status = LsaLookupNames2(pol_handle(), 0x80000000, 1, pLsaString, &ReferencedDomains, &sid);
-//	//if (status != 0)
-//	//{
-//	//	printf("LsaLookupNames2 error");
-//	//	return false;
-//	//}
-//	PLSA_UNICODE_STRING rights;
-//	ULONG count;
-//	NTSTATUS status = LsaEnumerateAccountRights(pol_handle(), sid, &rights, &count);
-//	if (status != 0)
-//	{
-//		printf("LsaEnumerateAccountRights error");
-//		return false;
-//	}
-//	for (ULONG k = 0; k < count; k++)
-//	{
-//		wprintf(L"%s\n", rights->Buffer);
-//	}
-//	return true;
-//}
-
-
 LSA_HANDLE pol_handle()
 {
 	LSA_OBJECT_ATTRIBUTES ObjectAttributes;
@@ -296,4 +270,49 @@ LSA_HANDLE pol_handle()
 		return NULL;
 	}
 	return lsahPolicyHandle;
+}
+
+void enum_acc_right_token(LPCWSTR username, LPCWSTR password)
+{
+	//WCHAR username[127];
+	//WCHAR password[127];
+	//printf("User name: ");	_getws_s(username);
+	//printf("User password: "); _getws_s(password);
+	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
+	PLSA_TRANSLATED_SID2  sid;
+	LSA_UNICODE_STRING pLsaString;
+	bool rc;
+	rc = init_lsa_string(&pLsaString, username);
+	if (!rc)
+	{
+		printf("group_names into lsa error %d");
+		return;
+	}
+	LsaLookupNames2(pol_handle(), 0x80000000, 1, &pLsaString, &ReferencedDomains, &sid);
+	HANDLE token;
+	TCHAR  privilegeName[256];
+	DWORD PrivilegeName;
+	if (!LogonUser(username, 0, password, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &token))
+	{
+		printf("Error logon process\n");
+		return;
+	}
+	DWORD dwLen = NULL;
+	PTOKEN_PRIVILEGES priv = NULL;
+	GetTokenInformation(token, TokenPrivileges, NULL, 0, &dwLen);
+	priv = (PTOKEN_PRIVILEGES)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwLen);
+	if (!GetTokenInformation(token, TokenPrivileges, priv, dwLen, &dwLen))
+	{
+		printf("Error gettoken process\n");
+		return;
+	}
+	for (DWORD i = 0; i < priv->PrivilegeCount; i++)
+	{
+		PrivilegeName = 256;
+		LookupPrivilegeName(NULL, &priv->Privileges[i].Luid, (LPWSTR)privilegeName, &PrivilegeName);
+		if ((priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED || (priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED_BY_DEFAULT) == SE_PRIVILEGE_ENABLED_BY_DEFAULT)
+			wprintf(L"%s\n", privilegeName);
+	}
+	HeapFree(GetProcessHeap(), 0, priv);
+	CloseHandle(token);
 }
