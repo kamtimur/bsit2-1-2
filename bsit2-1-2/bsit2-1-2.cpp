@@ -84,7 +84,7 @@ bool enum_groups_users()
 		printf("No such function NetLocalGroupGetMembers");
 		return false;
 	}
-	PLOCALGROUP_INFO_0 pGroupsBuf;
+	PLOCALGROUP_INFO_0 pGroupsBuf = NULL;
 	DWORD groupsTotalentries = 0;
 	DWORD groupsEntriesread = 0;
 	DWORD_PTR groupsResumehandle = NULL;
@@ -168,24 +168,29 @@ bool enum_groups_users()
 			rc = ConvertSidToStringSid(lgrmi2_sid, &userStringSid[j]);
 			wprintf(L"\t%s %s\n", lgrmi2_domainandname, userStringSid[j]);
 		}
-		if(buf)
-		ret = NetApiBufferFree(buf);
+		if (buf)
+		{
+			ret = NetApiBufferFree(buf);
+			if (ret != NERR_Success)
+			{
+				printf("NetApiBufferFree error %d", ret);
+
+				return false;
+			}
+		}
+	}
+	if (pGroupsBuf)
+	{
+		ret = NetApiBufferFree(pGroupsBuf);
 		if (ret != NERR_Success)
 		{
 			printf("NetApiBufferFree error %d", ret);
-			
 			return false;
 		}
 	}
 	if (!FreeLibrary(Netapi32))
 	{
 		printf("FreeLibrary Netapi32 error");
-		return false;
-	}
-	ret = NetApiBufferFree(pGroupsBuf);
-	if (ret != NERR_Success)
-	{
-		printf("NetApiBufferFree error %d", ret);
 		return false;
 	}
 	if (!FreeLibrary(Advapi32))
