@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <LM.h>
 #include <Ntsecapi.h>
+#include <sddl.h>
 
 
 typedef DWORD(WINAPI *NetLocalGroupEnumT)		(LPWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, PDWORD_PTR);
@@ -15,6 +16,7 @@ typedef NTSTATUS(WINAPI *NetLocalGroupGetMembersT)	(LPCWSTR, LPCWSTR, DWORD, LPB
 
 bool enum_groups_users();
 bool init_lsa_string(PLSA_UNICODE_STRING pLsaString, LPCWSTR pwszString);
+
 LSA_HANDLE pol_handle();
 
 
@@ -22,7 +24,7 @@ LSA_HANDLE pol_handle();
 int main()
 {
 	setlocale(LC_ALL, "Russian");
-	while (!enum_groups_users());
+	enum_groups_users();
 	return 0;
 }
 
@@ -107,12 +109,12 @@ bool enum_groups_users()
 			return false;
 		}
 	}
-	ret = NetApiBufferFree(pGroupsBuf);
-	if (ret != NERR_Success)
-	{
-		printf("NetApiBufferFree error %d", ret);
-		return false;
-	}
+	//ret = NetApiBufferFree(pGroupsBuf);
+	//if (ret != NERR_Success)
+	//{
+	//	printf("NetApiBufferFree error %d", ret);
+	//	return false;
+	//}
 
 	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
 	PLSA_TRANSLATED_SID2  sid;
@@ -148,13 +150,13 @@ bool enum_groups_users()
 		DWORD usersEntriesread = 0;
 		DWORD usersTotalentries = 0;
 		DWORD_PTR usersResumehandle = NULL;
-		LOCALGROUP_MEMBERS_INFO_2 * buf;
-		status = NetLocalGroupGetMembers(NULL, group_names[i], 2, (BYTE**)&buf, 1000, &usersEntriesread, &usersTotalentries, &usersResumehandle);
+		LOCALGROUP_MEMBERS_INFO_2 * buf = NULL;
+		status = NetLocalGroupGetMembers(NULL, group_names[i], 2, (BYTE**)&buf, MAX_PREFERRED_LENGTH, &usersEntriesread, &usersTotalentries, &usersResumehandle);
 		if (status != 0)
 		{
 			//system("cls");
 			printf("NetLocalGroupGetMembers error %d\n", status);
-			system("cls");
+			//system("cls");
 			return false;
 		}
 		wprintf(L"%s %s\n", group_names[i], groupStringSid[i]);
@@ -166,6 +168,7 @@ bool enum_groups_users()
 			rc = ConvertSidToStringSid(lgrmi2_sid, &userStringSid[j]);
 			wprintf(L"\t%s %s\n", lgrmi2_domainandname, userStringSid[j]);
 		}
+		if(buf)
 		ret = NetApiBufferFree(buf);
 		if (ret != NERR_Success)
 		{
@@ -177,6 +180,12 @@ bool enum_groups_users()
 	if (!FreeLibrary(Netapi32))
 	{
 		printf("FreeLibrary Netapi32 error");
+		return false;
+	}
+	ret = NetApiBufferFree(pGroupsBuf);
+	if (ret != NERR_Success)
+	{
+		printf("NetApiBufferFree error %d", ret);
 		return false;
 	}
 	if (!FreeLibrary(Advapi32))
