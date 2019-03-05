@@ -31,7 +31,7 @@ typedef	DWORD	(WINAPI *NetLocalGroupSetInfoT)		(LPCWSTR, LPCWSTR, DWORD, LPBYTE,
 bool enum_groups_users();																				//работает
 bool init_lsa_string(PLSA_UNICODE_STRING pLsaString, LPCWSTR pwszString);								//работает
 LSA_HANDLE pol_handle();																				//работает
-void enum_acc_right_token(LPCWSTR username, LPCWSTR password);					
+void enum_acc_right_token(LPCWSTR username, LPCWSTR password);											
 bool add_user(LPCWSTR username, LPCWSTR password);														//работает	
 bool delete_user(LPCWSTR username);																		//работает
 bool set_privilege(LPCWSTR username, LPCWSTR password, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege);
@@ -41,9 +41,9 @@ bool add_user_to_group(LPCWSTR username, LPCWSTR groupname);											//работае
 bool delete_user_from_group(LPCWSTR username, LPCWSTR groupname);										//работает
 bool add_acc_rights(LPCWSTR name, LPCWSTR privilege);													//работает
 bool del_acc_rights(LPCWSTR name, LPCWSTR privilege);													//работает
-bool change_username(LPCWSTR name, LPCWSTR new_name);
-bool change_user_pass(LPCWSTR name, LPCWSTR old_pass, LPCWSTR new_pass);
-bool change_group_name(LPCWSTR name, LPCWSTR new_name);
+bool change_username(LPCWSTR name, LPCWSTR new_name);													//работает
+bool change_user_pass(LPCWSTR name, LPCWSTR old_pass, LPCWSTR new_pass);								//работает
+bool change_group_name(LPCWSTR name, LPCWSTR new_name);													//работает
 bool enum_account_rights(LPCWSTR name);																	//работает
 
 
@@ -58,8 +58,9 @@ bool enum_account_rights(LPCWSTR name);																	//работает
 //#define ADD_USER_GROUP
 //#define DELETE_USER_GROUP
 
-#define ADD_STATE
-#define DELETE_STATE
+//#define ADD_STATE
+//#define DELETE_STATE
+#define RENAME
 std::wstring domain = L"DESKTOP-7A7SM2S\\";
 
 int main()
@@ -78,24 +79,45 @@ int main()
 	printf("\n");
 	add_user_to_group(user, group_name);
 	printf("\n");
+	enum_account_rights(user);
+	printf("\n");
 	add_acc_rights(user, SE_DEBUG_NAME);
 	printf("\n");
 	enum_account_rights(user);
+	printf("\n");
 	del_acc_rights(user, SE_DEBUG_NAME);
+	printf("\n");
 	enum_account_rights(user);
 #endif // ADD_STATE
-	printf("\n");
-	//enum_groups_users();
 
 #ifdef DELETE_STATE
 	delete_user_from_group(user, group_name);
 	delete_group(group_name);
 #endif // DELETE_STATE
 
+#ifdef RENAME
+	LPCWSTR newuser = L"qwerty";
+	LPCWSTR newpass = L"qwerty_pass";
+	LPCWSTR newgroup_name = L"qwerty_group";
+	add_group(group_name);
+	printf("\n");
+	add_user(user, pass);
+	printf("\n");
+	add_user_to_group(user, group_name);
+	printf("\n");
+	change_user_pass(user, pass, newpass);
+	printf("\n");
+	enum_acc_right_token(user, newpass);
 
+	change_username(user, newuser);
+	change_group_name(group_name, newgroup_name);
+	enum_groups_users();
+	delete_user(newuser);
+	delete_group(newgroup_name);
 
+#endif // RENAME
 
-	//enum_groups_users();
+	enum_groups_users();
 
 
 	return 0;
