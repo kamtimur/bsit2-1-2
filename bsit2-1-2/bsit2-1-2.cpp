@@ -6,11 +6,7 @@
 #include <Ntsecapi.h>
 #include <sddl.h>
 
-//#define PRIV
-#define ADD_USER
-#define DELETE_USER
-#define ADD_GROUP
-#define DELETE_GROUP
+
 
 typedef DWORD	(WINAPI *NetLocalGroupEnumT)		(LPWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, PDWORD_PTR);
 typedef NTSTATUS(WINAPI *LsaLookupNames2T)			(LSA_HANDLE, ULONG, ULONG, PLSA_UNICODE_STRING, PLSA_REFERENCED_DOMAIN_LIST*, PLSA_TRANSLATED_SID2*);
@@ -32,48 +28,74 @@ typedef	DWORD	(WINAPI *NetLocalGroupSetInfoT)		(LPCWSTR, LPCWSTR, DWORD, LPBYTE,
 
 
 
-bool enum_groups_users();
-bool init_lsa_string(PLSA_UNICODE_STRING pLsaString, LPCWSTR pwszString);
-LSA_HANDLE pol_handle();
-void enum_acc_right_token(LPCWSTR username, LPCWSTR password);
-bool add_user(LPCWSTR username, LPCWSTR password);
-bool delete_user(LPCWSTR username);
+bool enum_groups_users();																				//работает
+bool init_lsa_string(PLSA_UNICODE_STRING pLsaString, LPCWSTR pwszString);								//работает
+LSA_HANDLE pol_handle();																				//работает
+void enum_acc_right_token(LPCWSTR username, LPCWSTR password);					
+bool add_user(LPCWSTR username, LPCWSTR password);														//работает	
+bool delete_user(LPCWSTR username);																		//работает
 bool set_privilege(LPCWSTR username, LPCWSTR password, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege);
-bool add_group(LPCWSTR group_name);
-bool delete_group(LPCWSTR group_name);
-bool add_user_to_group(LPCWSTR username, LPCWSTR groupname);
-bool delete_user_from_group(LPCWSTR username, LPCWSTR groupname);
-bool add_acc_rights(LPCWSTR name, LPCWSTR privilege);
-bool del_acc_rights(LPCWSTR name, LPCWSTR privilege);
+bool add_group(LPCWSTR group_name);																		//работает
+bool delete_group(LPCWSTR group_name);																	//работает
+bool add_user_to_group(LPCWSTR username, LPCWSTR groupname);											//работает
+bool delete_user_from_group(LPCWSTR username, LPCWSTR groupname);										//работает
+bool add_acc_rights(LPCWSTR name, LPCWSTR privilege);													//работает
+bool del_acc_rights(LPCWSTR name, LPCWSTR privilege);													//работает
 bool change_username(LPCWSTR name, LPCWSTR new_name);
 bool change_user_pass(LPCWSTR name, LPCWSTR old_pass, LPCWSTR new_pass);
 bool change_group_name(LPCWSTR name, LPCWSTR new_name);
+bool enum_account_rights(LPCWSTR name);																	//работает
+
+
+
+//#define PRIV
+//#define ADD_USER
+//#define DELETE_USER
+//#define ADD_GROUP
+//#define DELETE_GROUP
+//#define ADD_GROUP
+//#define DELETE_GROUP
+//#define ADD_USER_GROUP
+//#define DELETE_USER_GROUP
+
+#define ADD_STATE
+#define DELETE_STATE
+std::wstring domain = L"DESKTOP-7A7SM2S\\";
 
 int main()
 {
 	setlocale(LC_ALL, "Russian");
 	//enum_groups_users();
 
-	LPCWSTR user = L"bsit1";
-	LPCWSTR pass = L"bsit1";
-	LPCWSTR group_name = L"bsit1";
+	LPCWSTR user = L"bsit1_user";
+	LPCWSTR pass = L"bsit1_pass";
+	LPCWSTR group_name = L"bsit1_group";
 	bool status;
-	//enum_acc_right_token(user, pass);
-#ifdef ADD_USER
-	status = add_user(user, pass);
-	if (!status)
-	{
-		printf("error add_user\n");
-	}
-#endif // ADD_USER
-#ifdef DELETE_USER
-	status = delete_user(user);
-	if (!status)
-	{
-		printf("error delete_user\n");
-	}
-#endif // DELETE_USER
-	enum_groups_users();
+#ifdef ADD_STATE
+	add_group(group_name);
+	printf("\n");
+	add_user(user, pass);
+	printf("\n");
+	add_user_to_group(user, group_name);
+	printf("\n");
+	add_acc_rights(user, SE_DEBUG_NAME);
+	printf("\n");
+	enum_account_rights(user);
+	del_acc_rights(user, SE_DEBUG_NAME);
+	enum_account_rights(user);
+#endif // ADD_STATE
+	printf("\n");
+	//enum_groups_users();
+
+#ifdef DELETE_STATE
+	delete_user_from_group(user, group_name);
+	delete_group(group_name);
+#endif // DELETE_STATE
+
+
+
+
+	//enum_groups_users();
 
 
 	return 0;
@@ -358,8 +380,8 @@ void enum_acc_right_token(LPCWSTR username, LPCWSTR password)
 	{
 		PrivilegeName = 256;
 		LookupPrivilegeName(NULL, &priv->Privileges[i].Luid, (LPWSTR)privilegeName, &PrivilegeName);
-		if ((priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED || (priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED_BY_DEFAULT) == SE_PRIVILEGE_ENABLED_BY_DEFAULT)
-			wprintf(L"%s\n", privilegeName);
+		//if ((priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED || (priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED_BY_DEFAULT) == SE_PRIVILEGE_ENABLED_BY_DEFAULT)
+		wprintf(L"%s\n", privilegeName);
 	}
 	HeapFree(GetProcessHeap(), 0, priv);
 	CloseHandle(token);
@@ -393,7 +415,7 @@ bool add_user(LPCWSTR username, LPCWSTR password)
 	ui.usri1_flags = UF_SCRIPT | UF_DONT_EXPIRE_PASSWD | UF_NORMAL_ACCOUNT;
 	ui.usri1_script_path = NULL;
 	DWORD dwError = 0;
-	if (NetUserAdd(0, 1, (LPBYTE)&ui, &dwError))
+	if (!NetUserAdd(0, 1, (LPBYTE)&ui, &dwError))
 	{
 		printf("NetLocalGroupSetInfo error\n");
 		return false;
@@ -532,10 +554,21 @@ bool add_user_to_group(LPCWSTR username, LPCWSTR groupname)
 		printf("No such function NetLocalGroupAddMembers");
 		return false;
 	}
+	//PCTSTR wszAccName = TEXT("hardcoded username for testing");
+	//LPTSTR wszDomainName = (LPTSTR)GlobalAlloc(GPTR, sizeof(TCHAR) * 1024);
+	//DWORD cchDomainName = 1024;
+	//SID_NAME_USE eSidType;
+	//SID sid;
+	//DWORD cbSid = 1024;
+	//if (!LookupAccountName(NULL, wszAccName, &sid, &cbSid, wszDomainName, &cchDomainName, &eSidType)) {
+	//	return GetLastError();
+	//}
+
 
 	LOCALGROUP_MEMBERS_INFO_3 lgmi3;
-	lgmi3.lgrmi3_domainandname = const_cast<LPWSTR>(username);
-	if (NetLocalGroupAddMembers(0, groupname, 3, (LPBYTE)&lgmi3, 1))
+	lgmi3.lgrmi3_domainandname = (LPWSTR)username;
+	NTSTATUS status = NetLocalGroupAddMembers(0, groupname, 3, (LPBYTE)&lgmi3, 1);
+	if (status !=0)
 	{
 		printf("NetLocalGroupAddMembers error\n");
 		return false;
@@ -625,7 +658,8 @@ bool add_acc_rights(LPCWSTR name, LPCWSTR privilege)
 		printf("LsaLookupNames2 error");
 		return false;
 	}
-	if (LsaAddAccountRights(pol_handle(), sid, &pLsaStringPrivilege, 1))
+	status = LsaAddAccountRights(pol_handle(), sid, &pLsaStringPrivilege, 1);
+	if (status != 0)
 	{
 		printf("LsaAddAccountRights error\n");
 		return false;
@@ -771,5 +805,43 @@ bool change_group_name(LPCWSTR name, LPCWSTR new_name)
 		return false;
 	}
 	printf("change_group_name success\n");
+	return true;
+}
+
+bool enum_account_rights(LPCWSTR name)
+{
+	NTSTATUS status;
+
+
+	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
+	PLSA_TRANSLATED_SID2  sid;
+	LSA_UNICODE_STRING pLsaString;
+	bool rc = init_lsa_string(&pLsaString, name);
+
+
+	status = LsaLookupNames2(pol_handle(), 0x80000000, 1, &pLsaString, &ReferencedDomains, &sid);
+
+
+	if (status == 0) {
+		PLSA_UNICODE_STRING rights = NULL;
+		ULONG count = 0;
+		status = LsaEnumerateAccountRights(pol_handle(), sid, &rights, &count); //для пользователей, назначенные непосредственно ему, функция AddAccountRights
+		if (status != 0) {
+			if (LsaNtStatusToWinError(status) == 87) { //для групп
+				status = LsaEnumerateAccountRights(pol_handle(), sid[0].Sid, &rights, &count);
+				if (status != 0)
+					wprintf(L"Код ошибки получения привилегий: %lu\n", LsaNtStatusToWinError(status));
+			}
+			else
+				wprintf(L"Код ошибки получения привилегий: %lu\n", LsaNtStatusToWinError(status));
+		}
+		for (ULONG k = 0; k < count; k++)
+		{
+			wprintf(L"%s\n", rights[k].Buffer);
+		}
+	}
+	else {
+		wprintf(L"Код ошибки получения SID: %lu\n", LsaNtStatusToWinError(status));
+	}
 	return true;
 }
