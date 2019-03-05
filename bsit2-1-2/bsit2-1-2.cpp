@@ -5,7 +5,7 @@
 #include <LM.h>
 #include <Ntsecapi.h>
 #include <sddl.h>
-
+#include <ntsecapi.h>
 
 
 typedef DWORD	(WINAPI *NetLocalGroupEnumT)		(LPWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, PDWORD_PTR);
@@ -45,35 +45,24 @@ bool change_username(LPCWSTR name, LPCWSTR new_name);													//работает
 bool change_user_pass(LPCWSTR name, LPCWSTR old_pass, LPCWSTR new_pass);								//работает
 bool change_group_name(LPCWSTR name, LPCWSTR new_name);													//работает
 bool enum_account_rights(LPCWSTR name);																	//работает
+BOOL en_priv(LPCWSTR username, LPCWSTR password, LPCWSTR Name, BOOL Enabled);
 
 
 
 //#define PRIV
-//#define ADD_USER
-//#define DELETE_USER
-//#define ADD_GROUP
-//#define DELETE_GROUP
-//#define ADD_GROUP
-//#define DELETE_GROUP
-//#define ADD_USER_GROUP
-//#define DELETE_USER_GROUP
-
-#define ADD_STATE
-#define DELETE_STATE
-#define RENAME
-std::wstring domain = L"DESKTOP-7A7SM2S\\";
-
+//#define ADD_STATE
+//#define DELETE_STATE
+//#define RENAME
+//#define PRIVILEGE
+//#define INHERIT
 int main()
 {
 	setlocale(LC_ALL, "Russian");
-	//enum_groups_users();
-
 	LPCWSTR user = L"bsit1_user";
+	LPCWSTR user2 = L"bsit2_user";
 	LPCWSTR pass = L"bsit1_pass";
 	LPCWSTR group_name = L"bsit1_group";
 	bool status;
-
-
 #ifdef ADD_STATE
 	add_group(group_name);
 	printf("\n");
@@ -93,26 +82,18 @@ int main()
 	printf("\n");
 	enum_groups_users();
 #endif // ADD_STATE
-
-
 	printf("\n");
 	printf("\n");
 	printf("\n");
-
-
 #ifdef DELETE_STATE
 	delete_user(user);
 	printf("\n");
 	delete_group(group_name);
 	printf("\n");
 #endif // DELETE_STATE
-
-
 	printf("\n");
 	printf("\n");
 	printf("\n");
-
-
 #ifdef RENAME
 	LPCWSTR newuser = L"qwerty";
 	LPCWSTR newpass = L"qwerty_pass";
@@ -139,12 +120,70 @@ int main()
 	printf("\n");
 	delete_group(newgroup_name);
 	printf("\n");
-
 #endif // RENAME
+#ifdef PRIVILEGE
+	//enum_groups_users();
+	add_user(user, pass);
+	add_acc_rights(user, (L"SeInteractiveLogonRight"));
+	enum_account_rights(user);
+	//set_privilege(user, pass, TEXT("SeInteractiveLogonRight"), true);
+	//en_priv(user, pass, const_cast<LPWSTR>(L"SeInteractiveLogonRight"), true);
+	//en_priv(user, pass, SE_DEBUG_NAME, true);
+	en_priv(user, pass, (L"SeInteractiveLogonRight"), true);
+	delete_user(user);
+#endif
+#ifdef INHERIT
+	//add_user(user, pass);
+	//enum_account_rights(user);
+	////del_acc_rights(user, (L"SeInteractiveLogonRight"));
+	//add_user_to_group(user, L"Администраторы");
+	//enum_groups_users();
+	//enum_account_rights(user);
+	//delete_user(user);
+	add_user(user2, pass);
+	add_group(group_name);
+	//SeChangeNotifyPrivilege
+	//	SeIncreaseWorkingSetPrivilege
+	//	SeShutdownPrivilege
+	//	SeUndockPrivilege
+	//	SeTimeZonePrivilege
+	//	SeInteractiveLogonRight
+	//	SeNetworkLogonRight
+	add_acc_rights(user2, SE_INTERACTIVE_LOGON_NAME);
+	add_acc_rights(user2, SE_NETWORK_LOGON_NAME);
+	add_acc_rights(user2, SE_BATCH_LOGON_NAME);
+	add_acc_rights(user2, SE_SERVICE_LOGON_NAME);
+	add_acc_rights(user2, SE_REMOTE_INTERACTIVE_LOGON_NAME);
+	add_acc_rights(user2, (L"SeIncreaseWorkingSetPrivilege"));
+	add_acc_rights(user2, (L"SeShutdownPrivilege"));
+	add_acc_rights(user2, (L"SeUndockPrivilege"));
+	add_acc_rights(user2, (L"SeTimeZonePrivilege"));
 
+	add_acc_rights(group_name, SE_INTERACTIVE_LOGON_NAME);
+	add_acc_rights(group_name, SE_NETWORK_LOGON_NAME);
+	add_acc_rights(group_name, SE_BATCH_LOGON_NAME);
+	add_acc_rights(group_name, SE_SERVICE_LOGON_NAME);
+	add_acc_rights(group_name, SE_REMOTE_INTERACTIVE_LOGON_NAME);
+	add_acc_rights(group_name, (L"SeIncreaseWorkingSetPrivilege"));
+	add_acc_rights(group_name, (L"SeShutdownPrivilege"));
+	add_acc_rights(group_name, (L"SeUndockPrivilege"));
+	add_acc_rights(group_name, (L"SeTimeZonePrivilege"));
+
+	en_priv(user2, pass, (L"SeIncreaseWorkingSetPrivilege"), true);
+	en_priv(user2, pass, (L"SeShutdownPrivilege"), true);
+	en_priv(user2, pass, (L"SeUndockPrivilege"), true);
+	en_priv(user2, pass, (L"SeTimeZonePrivilege"), true);
+
+	enum_account_rights(user2);
+	add_user_to_group(user2, group_name);
+#endif
+	//delete_user(L"User2");
+	//delete_user(L"User1");
+	//delete_user(L"Doctor2");
+	//delete_user(L"Doctor1");
+	delete_group(L"Users_MBKS");
+	delete_group(L"Doctors_MBKS");
 	enum_groups_users();
-
-
 	return 0;
 }
 
@@ -176,28 +215,24 @@ bool enum_groups_users()
 		printf("No such function LsaLookupNames2");
 		return false;
 	}
-
 	ConvertSidToStringSidT ConvertSidToStringSid = (ConvertSidToStringSidT)GetProcAddress(Advapi32, "ConvertSidToStringSidW");
 	if (ConvertSidToStringSid == NULL)
 	{
 		printf("No such function ConvertSidToStringSidW");
 		return false;
 	}
-
 	LsaFreeMemoryT LsaFreeMemory = (LsaFreeMemoryT)GetProcAddress(Advapi32, "LsaFreeMemory");
 	if (LsaFreeMemory == NULL)
 	{
 		printf("No such function LsaFreeMemory");
 		return false;
 	}
-
 	NetApiBufferFreeT NetApiBufferFree = (NetApiBufferFreeT)GetProcAddress(Netapi32, "NetApiBufferFree");
 	if (NetApiBufferFree == NULL)
 	{
 		printf("No such function NetApiBufferFree");
 		return false;
 	}
-
 	NetLocalGroupGetMembersT NetLocalGroupGetMembers = (NetLocalGroupGetMembersT)GetProcAddress(Netapi32, "NetLocalGroupGetMembers");
 	if (NetLocalGroupGetMembers == NULL)
 	{
@@ -215,7 +250,6 @@ bool enum_groups_users()
 		printf("NetLocalGroupEnum error %d", ret);
 		return false;
 	}
-
 	LPWSTR group_names[100];
 	LSA_UNICODE_STRING pLsaString[100];
 	bool rc;
@@ -229,23 +263,17 @@ bool enum_groups_users()
 			return false;
 		}
 	}
-
 	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
 	PLSA_TRANSLATED_SID2  sid;
-
 	NTSTATUS status = LsaLookupNames2(pol_handle(), 0x80000000, groupsEntriesread, pLsaString, &ReferencedDomains, &sid);
-
 	if (status != 0)
 	{
 		printf("LsaLookupNames2 error");
 		return false;
 	}
-
 	LPWSTR groupStringSid[100];
 	for (int i = 0; i < groupsEntriesread; i++)
 	{
-
-
 		rc = ConvertSidToStringSid(sid[i].Sid, &groupStringSid[i]);
 		if (!rc)
 		{
@@ -253,10 +281,8 @@ bool enum_groups_users()
 			return false;
 		}
 	}
-
 	for (int i = 0; i < groupsEntriesread; i++)
 	{
-		//enum_users(group_names[i]);
 		DWORD usersEntriesread = 0;
 		DWORD usersTotalentries = 0;
 		DWORD_PTR usersResumehandle = NULL;
@@ -264,16 +290,11 @@ bool enum_groups_users()
 		status = NetLocalGroupGetMembers(NULL, group_names[i], 2, (BYTE**)&buf, MAX_PREFERRED_LENGTH, &usersEntriesread, &usersTotalentries, &usersResumehandle);
 		if (status != 0)
 		{
-			//system("cls");
 			printf("NetLocalGroupGetMembers error %d\n", status);
-			//system("cls");
 			return false;
 		}
 		wprintf(L"%s %s\n", group_names[i], groupStringSid[i]);
 #ifdef PRIV
-
-
-
 		PLSA_UNICODE_STRING rights;
 		ULONG count;
 		NTSTATUS status = LsaEnumerateAccountRights(pol_handle(), sid[i].Sid, &rights, &count);
@@ -289,7 +310,6 @@ bool enum_groups_users()
 		}
 		LsaFreeMemory(rights);
 #endif // PRIV
-
 		for (int j = 0; j < usersEntriesread; j++)
 		{
 			PSID         lgrmi2_sid = buf[j].lgrmi2_sid;
@@ -297,17 +317,29 @@ bool enum_groups_users()
 			LPWSTR userStringSid[100];
 			rc = ConvertSidToStringSid(lgrmi2_sid, &userStringSid[j]);
 			wprintf(L"\t%s %s\n", lgrmi2_domainandname, userStringSid[j]);
+#ifdef PRIV
+			PLSA_UNICODE_STRING rights;
+			ULONG count;
+			NTSTATUS status = LsaEnumerateAccountRights(pol_handle(), lgrmi2_sid, &rights, &count);
+			if (status != 0)
+			{
+				//printf("LsaEnumerateAccountRights error");
+				//return false;
+			}
+			for (ULONG k = 0; k < count; k++)
+			{
+				wprintf(L"____%s\n", (rights + k)->Buffer);
+				//rights+ count;
+			}
+			LsaFreeMemory(rights);
+#endif
 		}
-
-
-
 		if (buf)
 		{
 			ret = NetApiBufferFree(buf);
 			if (ret != NERR_Success)
 			{
 				printf("NetApiBufferFree error %d", ret);
-
 				return false;
 			}
 		}
@@ -343,22 +375,18 @@ bool enum_groups_users()
 bool init_lsa_string(	PLSA_UNICODE_STRING pLsaString,	LPCWSTR pwszString)
 {
 	DWORD dwLen = 0;
-
 	if (NULL == pLsaString)
 		return FALSE;
-
 	if (NULL != pwszString)
 	{
 		dwLen = wcslen(pwszString);
 		if (dwLen > 0x7ffe)   // String is too large
 			return FALSE;
 	}
-
 	// Store the string.
 	pLsaString->Buffer = (WCHAR *)pwszString;
 	pLsaString->Length = (USHORT)dwLen * sizeof(WCHAR);
 	pLsaString->MaximumLength = (USHORT)(dwLen + 1) * sizeof(WCHAR);
-
 	return TRUE;
 }
 
@@ -367,10 +395,8 @@ LSA_HANDLE pol_handle()
 	LSA_OBJECT_ATTRIBUTES ObjectAttributes;
 	NTSTATUS ntsResult;
 	LSA_HANDLE lsahPolicyHandle;
-
 	// Object attributes are reserved, so initialize to zeros.
 	ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
-
 	// Get a handle to the Policy object.
 	ntsResult = LsaOpenPolicy(
 		NULL,    //Name of the target system.
@@ -378,7 +404,6 @@ LSA_HANDLE pol_handle()
 		POLICY_ALL_ACCESS, //POLICY_LOOKUP_NAMES | POLICY_VIEW_LOCAL_INFORMATION, //Desired access permissions.
 		&lsahPolicyHandle  //Receives the policy handle.
 	);
-
 	if (ntsResult != 0)
 	{
 		// An error occurred. Display it as a win32 error code.
@@ -391,10 +416,6 @@ LSA_HANDLE pol_handle()
 
 void enum_acc_right_token(LPCWSTR username, LPCWSTR password)
 {
-	//WCHAR username[127];
-	//WCHAR password[127];
-	//printf("User name: ");	_getws_s(username);
-	//printf("User password: "); _getws_s(password);
 	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
 	PLSA_TRANSLATED_SID2  sid;
 	LSA_UNICODE_STRING pLsaString;
@@ -427,7 +448,7 @@ void enum_acc_right_token(LPCWSTR username, LPCWSTR password)
 	{
 		PrivilegeName = 256;
 		LookupPrivilegeName(NULL, &priv->Privileges[i].Luid, (LPWSTR)privilegeName, &PrivilegeName);
-		//if ((priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED || (priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED_BY_DEFAULT) == SE_PRIVILEGE_ENABLED_BY_DEFAULT)
+		if ((priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED || (priv->Privileges[i].Attributes & SE_PRIVILEGE_ENABLED_BY_DEFAULT) == SE_PRIVILEGE_ENABLED_BY_DEFAULT)
 		wprintf(L"%s\n", privilegeName);
 	}
 	HeapFree(GetProcessHeap(), 0, priv);
@@ -448,11 +469,6 @@ bool add_user(LPCWSTR username, LPCWSTR password)
 		printf("No such function NetUserAdd");
 		return false;
 	}
-
-	//TCHAR username[100];
-	//TCHAR password[100];
-	//printf("User name: "); _getws_s(username);
-	//printf("User password: ");	_getws_s(password);
 	USER_INFO_1 ui;
 	ui.usri1_name = const_cast<LPWSTR>(username);
 	ui.usri1_password = const_cast<LPWSTR>(password);
@@ -498,13 +514,11 @@ bool delete_user(LPCWSTR username)
 bool set_privilege(LPCWSTR username, LPCWSTR password, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
 {
 	HANDLE token;
-
 	if (!LogonUser(username, 0, password, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &token))
 	{
 		printf("Error logon process\n");
 		return false;
 	}
-
 	TOKEN_PRIVILEGES tp;
 	LUID luid;
 
@@ -609,17 +623,6 @@ bool add_user_to_group(LPCWSTR username, LPCWSTR groupname)
 		printf("No such function NetLocalGroupAddMembers");
 		return false;
 	}
-	//PCTSTR wszAccName = TEXT("hardcoded username for testing");
-	//LPTSTR wszDomainName = (LPTSTR)GlobalAlloc(GPTR, sizeof(TCHAR) * 1024);
-	//DWORD cchDomainName = 1024;
-	//SID_NAME_USE eSidType;
-	//SID sid;
-	//DWORD cbSid = 1024;
-	//if (!LookupAccountName(NULL, wszAccName, &sid, &cbSid, wszDomainName, &cchDomainName, &eSidType)) {
-	//	return GetLastError();
-	//}
-
-
 	LOCALGROUP_MEMBERS_INFO_3 lgmi3;
 	lgmi3.lgrmi3_domainandname = (LPWSTR)username;
 	NTSTATUS status = NetLocalGroupAddMembers(0, groupname, 3, (LPBYTE)&lgmi3, 1);
@@ -797,8 +800,6 @@ bool change_username(LPCWSTR name, LPCWSTR new_name)
 		printf("No such function NetUserSetInfo");
 		return false;
 	}
-
-
 	USER_INFO_0 pBuf;
 	pBuf.usri0_name = const_cast<LPWSTR>(new_name);
 	NET_API_STATUS dwerr = NetUserSetInfo(0, name, 0, (LPBYTE)&pBuf, 0);
@@ -866,17 +867,11 @@ bool change_group_name(LPCWSTR name, LPCWSTR new_name)
 bool enum_account_rights(LPCWSTR name)
 {
 	NTSTATUS status;
-
-
 	PLSA_REFERENCED_DOMAIN_LIST ReferencedDomains;
 	PLSA_TRANSLATED_SID2  sid;
 	LSA_UNICODE_STRING pLsaString;
 	bool rc = init_lsa_string(&pLsaString, name);
-
-
 	status = LsaLookupNames2(pol_handle(), 0x80000000, 1, &pLsaString, &ReferencedDomains, &sid);
-
-
 	if (status == 0) {
 		PLSA_UNICODE_STRING rights = NULL;
 		ULONG count = 0;
@@ -899,4 +894,45 @@ bool enum_account_rights(LPCWSTR name)
 		wprintf(L"Код ошибки получения SID: %lu\n", LsaNtStatusToWinError(status));
 	}
 	return true;
+}
+
+BOOL en_priv(LPCWSTR username, LPCWSTR password, LPCWSTR Name, BOOL Enabled) 
+{
+	HANDLE token;
+	if (!LogonUser(username, 0, password, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &token))
+	{
+		printf("Error logon process\n");
+		return false;
+	}
+	LUID luid;
+
+
+	if (!LookupPrivilegeValue(
+		NULL,            // lookup privilege on local system
+		Name,   // privilege to lookup 
+		&luid))        // receives LUID of privilege
+	{
+		printf("LookupPrivilegeValue error: %u\n", GetLastError());
+		return false;
+	}
+
+	TOKEN_PRIVILEGES tp;
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = luid;
+	tp.Privileges[0].Attributes = Enabled ? SE_PRIVILEGE_ENABLED : 0; // not use SE_PRIVILEGE_REMOVED, just disable
+
+	if (!AdjustTokenPrivileges(token, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL)) {
+		wprintf(L"AdjustTokenPrivileges failed - 0x%08x\n", GetLastError());
+		return FALSE;
+	}
+
+	if (GetLastError() == ERROR_NOT_ALL_ASSIGNED) {
+		wprintf(L"The process token does not have %s (%I64d).\n", Name, luid);
+		return FALSE;
+	}
+
+	wprintf(L"%s (%I64d) is temporarily %s.\n", Name, luid,
+		Enabled ? L"enabled" : L"disabled");
+
+	return TRUE;
 }
