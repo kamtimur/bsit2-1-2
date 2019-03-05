@@ -58,8 +58,8 @@ bool enum_account_rights(LPCWSTR name);																	//работает
 //#define ADD_USER_GROUP
 //#define DELETE_USER_GROUP
 
-//#define ADD_STATE
-//#define DELETE_STATE
+#define ADD_STATE
+#define DELETE_STATE
 #define RENAME
 std::wstring domain = L"DESKTOP-7A7SM2S\\";
 
@@ -72,6 +72,8 @@ int main()
 	LPCWSTR pass = L"bsit1_pass";
 	LPCWSTR group_name = L"bsit1_group";
 	bool status;
+
+
 #ifdef ADD_STATE
 	add_group(group_name);
 	printf("\n");
@@ -88,12 +90,28 @@ int main()
 	del_acc_rights(user, SE_DEBUG_NAME);
 	printf("\n");
 	enum_account_rights(user);
+	printf("\n");
+	enum_groups_users();
 #endif // ADD_STATE
 
+
+	printf("\n");
+	printf("\n");
+	printf("\n");
+
+
 #ifdef DELETE_STATE
-	delete_user_from_group(user, group_name);
+	delete_user(user);
+	printf("\n");
 	delete_group(group_name);
+	printf("\n");
 #endif // DELETE_STATE
+
+
+	printf("\n");
+	printf("\n");
+	printf("\n");
+
 
 #ifdef RENAME
 	LPCWSTR newuser = L"qwerty";
@@ -108,12 +126,19 @@ int main()
 	change_user_pass(user, pass, newpass);
 	printf("\n");
 	enum_acc_right_token(user, newpass);
-
+	printf("\n");
 	change_username(user, newuser);
+	printf("\n");
 	change_group_name(group_name, newgroup_name);
+	printf("\n");
 	enum_groups_users();
+	printf("\n");
+	printf("\n");
+	printf("\n");
 	delete_user(newuser);
+	printf("\n");
 	delete_group(newgroup_name);
+	printf("\n");
 
 #endif // RENAME
 
@@ -436,12 +461,13 @@ bool add_user(LPCWSTR username, LPCWSTR password)
 	ui.usri1_comment = NULL;
 	ui.usri1_flags = UF_SCRIPT | UF_DONT_EXPIRE_PASSWD | UF_NORMAL_ACCOUNT;
 	ui.usri1_script_path = NULL;
-	DWORD dwError = 0;
-	if (!NetUserAdd(0, 1, (LPBYTE)&ui, &dwError))
+	DWORD dwError = NetUserAdd(0, 1, (LPBYTE)&ui, &dwError);
+	if (dwError!=0)
 	{
 		printf("NetLocalGroupSetInfo error\n");
 		return false;
 	}
+	printf("add_user success\n");
 	return true;
 }
 
@@ -465,6 +491,7 @@ bool delete_user(LPCWSTR username)
 		printf("NetLocalGroupSetInfo error\n");
 		return false;
 	}
+	printf("delete_user success\n");
 	return true;
 }
 
@@ -534,8 +561,14 @@ bool add_group(LPCWSTR groupname)
 
 	_LOCALGROUP_INFO_0 lgi;
 	lgi.lgrpi0_name = const_cast<LPWSTR>(groupname);
-	if (NetLocalGroupAdd(0, 0, (LPBYTE)&lgi, 0))
+	DWORD ret = NetLocalGroupAdd(0, 0, (LPBYTE)&lgi, 0);
+	if (ret != 0)
+	{
 		printf("NetLocalGroupAdd error\n");
+		return false;
+	}
+	printf("add_group success\n");
+	return true;
 }
 
 bool delete_group(LPCWSTR groupname)
@@ -795,8 +828,8 @@ bool change_user_pass(LPCWSTR name, LPCWSTR old_pass, LPCWSTR new_pass)
 		printf("No such function NetUserChangePassword");
 		return false;
 	}
-	DWORD dwError = 0;
-	if (!NetUserChangePassword(NULL, name, old_pass, new_pass))
+	DWORD dwError = NetUserChangePassword(NULL, name, old_pass, new_pass);
+	if (dwError!=0)
 	{
 		printf("NetUserChangePassword error\n");
 		return false;
